@@ -3,34 +3,37 @@
 
 void INA219_Init(void) {
     pic18_i2c_enable();
-    uint8_t val[] = {0x39, 0x9f};  //default values - modify as needed
+    //default config value is 0x399f - modify as needed
+    uint8_t val[] = {0x39, 0x9f};
     pic18_i2c_write(DEVICE_ADDRESS, INA219_CONFIGURATION, val, 2);
 }
 
 void INA219_SetCalibration(void) {
-    //Shunt resistor = 0.1 ohm
+    // Shunt resistor = 0.1 ohm
     // Use Current LSB of 100uA
     // Calibration value = 4096 = 0x1000
-    uint8_t val[] = {0x10, 0x00};
+    uint8_t val[] = {0x10, 0x00}; //put in big endian order
     pic18_i2c_write(DEVICE_ADDRESS, INA219_CALIBRATION, val, 2);
 }
 
 double INA219_ReadCurrent(void) {
-    return 0.0;
+    uint16_t reg;
+    pic18_i2c_read(DEVICE_ADDRESS, INA219_CURRENT, (uint8_t *)&reg, 2);
+    reg = (reg >> 8) | (reg << 8);  //convert to little endian
+    return (int16_t)reg * 100e-6;
 }
 
 double INA219_ReadVoltage(void) {
-    uint8_t reg[2];
+    uint16_t reg;
     pic18_i2c_read(DEVICE_ADDRESS, INA219_BUS_VOLTAGE, (uint8_t *)&reg, 2);
-    uint16_t reg_le;
-    reg_le = reg[0];
-    reg_le <<= 8;
-    reg_le |= reg[1];
-    reg_le >>= 3;  //discard lower 3 bits
-    double voltage = reg_le * 0.004;
-    return voltage;
+    reg = (reg >> 8) | (reg << 8);  //convert to little endian
+    reg >>= 3;  //discard lower 3 bits
+    return reg * 0.004;
 }
 
 double INA219_ReadPower(void) {
-    return 0.0;
+    uint16_t reg;
+    pic18_i2c_read(DEVICE_ADDRESS, INA219_POWER, (uint8_t *)&reg, 2);
+    reg = (reg >> 8) | (reg << 8);  //convert to little endian
+    return (int16_t)reg * (20 * 100e-6);
 }
